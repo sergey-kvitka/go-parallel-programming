@@ -1,0 +1,5 @@
+/.idea/
+/go-parallel-programming.iml
+/testFiles/numbers100*
+/scripts/result*
+/venv/
