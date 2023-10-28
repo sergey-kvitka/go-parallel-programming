@@ -26,9 +26,22 @@ const (
 	_RNPErrTemplate        = "неверный формат входных данных (N = %d, M = %d, expected 10 ≤ N ≤ 1,000,000,000 & 1 ≤ M ≤ 1000 & M ≤ N, (processingFunction == nil) is %v, expected false, (numberDistribution == nil) is %v, expected false)"
 )
 
+// WriterFunc является consumer'ом для среза чисел и может вернуть ошибку;
+// используется для обработки записи срезов чисел (например, в определённую структуру или в файл)
 type WriterFunc func(nums []int) error
+
+// DistributionFunc принимает целое число и возвращает число с плавающей точкой;
+// используется при вычислении распределения чисел по элементам среза
 type DistributionFunc func(num int) float64
+
+// ProcessingFunc является consumer'ом для среза целых чисел;
+// используется для выполнения операций над числами при их обработке в отдельных горутинах
 type ProcessingFunc func(nums []int)
+
+// goroutineStartFunc используется для запуска обработки среза чисел в отдельной горутине;
+// помимо среза чисел nums принимает *sync.WaitGroup starter, после ожидания которого будет
+// запущена обработка чисел, и *sync.WaitGroup wg, у которого будет вызван соответствующий
+// метод, обозначающий полное завершение обработки чисел
 type goroutineStartFunc func(nums []int, starter *sync.WaitGroup, wg *sync.WaitGroup)
 
 // GenerateNumbers генерирует натуральные числа от 1 до n включительно и последовательно вызывает
@@ -172,15 +185,15 @@ func Distribute(totalNumber int, elementsNumber int, distribution DistributionFu
 // Информация о выполнении шагов 1, 3 и 4 выводится в консоль
 // (в том числе и информация о времени выполнения данных шагов).
 func RunNumberProcessing(
-// количество натуральных чисел, которое будет сгенерировано и записано в файл (10 ≤ N ≤ 1,000,000,000)
+	// количество натуральных чисел, которое будет сгенерировано и записано в файл (10 ≤ N ≤ 1,000,000,000)
 	N int,
-// количество горутин, в которых будут обрабатываться сгенерированные числа (1 ≤ M ≤ 1000, M ≤ N)
+	// количество горутин, в которых будут обрабатываться сгенерированные числа (1 ≤ M ≤ 1000, M ≤ N)
 	M int,
-// путь к директории, в которой находится или будет создан файл с числами
+	// путь к директории, в которой находится или будет создан файл с числами
 	fileDir string,
-// функция обработки чисел (в отдельной горутине)
+	// функция обработки чисел (в отдельной горутине)
 	processingFunction ProcessingFunc,
-// функция распределения чисел по горутинам (необязательно равномерная)
+	// функция распределения чисел по горутинам (необязательно равномерная)
 	numberDistribution DistributionFunc,
 ) error {
 	// проверка входных параметров на корректность
@@ -286,13 +299,16 @@ func writeNumbersToFile(filepath string, numbersAmount int) (int64, error) {
 	// (не свидетельствующая о том, что файла не существует), возвращаем данную ошибку
 	if err != nil {
 		return 0, err
-	}
+	} else
 	// если ошибки при получении информации о файле не возникло (что свидетельствует
 	// о том, что он существует), просто выводим информацию в консоль
-	fmt.Printf(
-		"Файл с нужным количеством чисел (%d) уже существует, новый файл не будет сгенерирован (расположение файла: \"%s\")\n",
-		numbersAmount, filepath,
-	)
+	{
+		fmt.Printf(
+			"Файл с нужным количеством чисел (%d) уже существует, новый файл не будет сгенерирован (расположение файла: \"%s\")\n",
+			numbersAmount, filepath,
+		)
+	}
+
 	return fileInfo.Size(), nil // возвращаем размер полученного/созданного файла
 }
 
@@ -300,13 +316,13 @@ func writeNumbersToFile(filepath string, numbersAmount int) (int64, error) {
 // считанных чисел по горутинам и одновременного запуска данных горутин (при этом
 // засекается время их работы). Информация о работе функции выводится в консоль.
 func processNumbersFromFile(
-// файл с числами
+	// файл с числами
 	file *os.File,
-// размер файла (в байтах)
+	// размер файла (в байтах)
 	fileSize int64,
-// распределение чисел по горутинам (каждый элемент соответствует количеству чисел, которое будет выделено горутине)
+	// распределение чисел по горутинам (каждый элемент соответствует количеству чисел, которое будет выделено горутине)
 	distributedNumbers []int,
-// функция для контролируемого через sync.WaitGroup запуска горутин
+	// функция для контролируемого через sync.WaitGroup запуска горутин
 	goroutineStarter goroutineStartFunc,
 ) error {
 	// в случае, если размер файла в байтах (далее S) большое (> 1,000,000) чтение файла будет произведено по частям;
@@ -334,14 +350,6 @@ func processNumbersFromFile(
 		waitGroup         = &sync.WaitGroup{}       // WaitGroup для ожидания выполнения всех горутин
 		err               error                     // ошибка
 	)
-
-	max := distributedNumbers[0]
-	for _, num := range distributedNumbers {
-		if num > max {
-			max = num
-		}
-	}
-	numbersFromFile = make([]int, 0, max)
 
 	// взведение счётчика WaitGroup запуска горутин (все горутины будут ждать обнуления счётчика)
 	starter.Add(1)
@@ -410,12 +418,6 @@ func processNumbersFromFile(
 		copy(prevBytes, byteBuffer[newlineIndex+1:nBytes])
 	}
 
-	byteBuffer = nil
-	prevBytes = nil
-	numbersFromFile = nil
-	strNumsBuffer = nil
-	numbersFromStr = nil
-
 	// если после работы цикла индекс числа в distributedNumbers не равен количеству горутин,
 	// возвращаем ошибку, сигнализирующую о некорректном завершении работы цикла
 	if distributionIndex != goroutinesAmount {
@@ -431,6 +433,23 @@ func processNumbersFromFile(
 	// ожидаем выполнения всех запущенных горутин
 	waitGroup.Wait()
 	elapsedNP := time.Since(startNP) // ! засекаем время выполнения всех горутин
-	fmt.Printf("Обработка чисел завершена за %s\n", elapsedNP)
+	fmt.Printf("Обработка чисел завершена за %s\n", nsToStr(elapsedNP.Nanoseconds()))
 	return nil // всё прошло без ошибок, возвращается nil
 }
+
+// nsToStr принимает наносекунды и возвращает строку с читаемой записью времени
+// (например, 22937124 -> "22.937 мс")
+func nsToStr(ns int64) string {
+	var unit string
+	curValue := float64(ns)
+	for _, unit = range timeUnits {
+		if curValue < 1000 {
+			break
+		}
+		curValue /= 1000
+	}
+	return fmt.Sprintf("%.3f %s", curValue, unit)
+}
+
+// timeUnits хранит единицы измерения времени в порядке возрастания
+var timeUnits = []string{"нс", "мкс", "мс", "c"}
