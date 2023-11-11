@@ -1,6 +1,8 @@
 package linklist
 
-import "errors"
+import (
+	"errors"
+)
 
 type List struct {
 	head *node
@@ -11,33 +13,25 @@ type node struct {
 	next  *node
 }
 
+func NewList() *List {
+	return &List{}
+}
+
+func createNode(value int) *node {
+	return &node{value: value}
+}
+
 func (list *List) Add(value int) {
-	newNode := node{value: value}
+	newNode := createNode(value)
 	if list.head == nil {
-		list.head = &newNode
+		list.head = newNode
 		return
 	}
 	curNode := list.head
 	for curNode.next != nil {
 		curNode = curNode.next
 	}
-	curNode.next = &newNode
-}
-
-func (list *List) Length() int {
-	length := 0
-	if list.head == nil {
-		return length
-	}
-	curNode := list.head
-	for {
-		length++
-		if curNode.next == nil {
-			break
-		}
-		curNode = curNode.next
-	}
-	return length
+	curNode.next = newNode
 }
 
 func (list *List) Delete(index int) (int, error) {
@@ -66,12 +60,31 @@ func (list *List) Delete(index int) (int, error) {
 	return value, nil
 }
 
-func (list *List) ToSlice() []int {
-	result := []int{}
+func (list *List) Contains(value int) bool {
 	curNode := list.head
 	for curNode != nil {
-		result = append(result, curNode.value)
+		if curNode.value == value {
+			return true
+		}
 		curNode = curNode.next
+	}
+	return false
+}
+
+func (list *List) Length() int {
+	length := 0
+	curNode := list.head
+	for ; curNode != nil; curNode = curNode.next {
+		length++
+	}
+	return length
+}
+
+func (list *List) ToSlice() []int {
+	var result []int
+	curNode := list.head
+	for ; curNode != nil; curNode = curNode.next {
+		result = append(result, curNode.value)
 	}
 	return result
 }
@@ -84,11 +97,11 @@ func (list *List) Insert(value int, index int) error {
 		return errors.New("index out of range")
 	}
 
-	newNode := node{value: value}
+	newNode := createNode(value)
 
 	if index == 0 {
 		newNode.next = list.head
-		list.head = &newNode
+		list.head = newNode
 		return nil
 	}
 
@@ -98,7 +111,7 @@ func (list *List) Insert(value int, index int) error {
 	}
 
 	newNode.next = curNode.next
-	curNode.next = &newNode
+	curNode.next = newNode
 
 	return nil
 }
