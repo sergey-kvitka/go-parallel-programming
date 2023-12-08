@@ -4,11 +4,73 @@ import (
 	"flag"
 	"fmt"
 	"go-parallel-programming/lab1"
+	"go-parallel-programming/lab2"
 	"math"
+	"runtime"
+	"time"
 )
 
 func main() {
 
+}
+
+func lab2Test() {
+
+	printSliceEdges := func(nums []int) {
+		length := len(nums)
+		if length <= 8 {
+			fmt.Println(nums)
+			return
+		}
+		min := int(math.Min(math.Floor(float64(length)/2), 6))
+		start := fmt.Sprint(nums[0 : min-1])
+		end := fmt.Sprint(nums[length-min+1 : length])
+		fmt.Println(start[:len(start)-1], "...", end[1:])
+	}
+
+	threads := runtime.NumCPU()
+	fmt.Println("Количество потоков:", threads)
+
+	_n := 1e6
+	n := int(_n)
+	fmt.Println("Поиск простых чисел в диапазоне от 2 до", n)
+
+	_time := time.Now()
+
+	fmt.Println("\nАлгоритм нахождения базовых простых чисел: решето Эратосфена")
+	printSliceEdges(lab2.SieveOfEratosthenes(n))
+	fmt.Println("Время работы данного алгоритма:", time.Since(_time))
+	_time = time.Now()
+
+	fmt.Println("\nМодифицированный последовательный алгоритм")
+	printSliceEdges(lab2.ModifiedSieveOfEratosthenes(n, lab2.SequentialFactorization()))
+	fmt.Println("Время работы данного алгоритма:", time.Since(_time))
+	fmt.Println(time.Since(_time))
+	_time = time.Now()
+
+	fmt.Println("\nПараллельный алгоритм №1: декомпозиция по данным")
+	printSliceEdges(lab2.ModifiedSieveOfEratosthenes(n, lab2.FactorizationWithDataDecomposition(threads)))
+	fmt.Println("Время работы данного алгоритма:", time.Since(_time))
+	fmt.Println(time.Since(_time))
+	_time = time.Now()
+
+	fmt.Println("\nПараллельный алгоритм №2: декомпозиция по базовым простым числам")
+	printSliceEdges(lab2.ModifiedSieveOfEratosthenes(n, lab2.FactorizationWithBaseComposition(threads)))
+	fmt.Println("Время работы данного алгоритма:", time.Since(_time))
+	fmt.Println(time.Since(_time))
+	_time = time.Now()
+
+	fmt.Println("\nПараллельный алгоритм №3: применение пула потоков")
+	printSliceEdges(lab2.ModifiedSieveOfEratosthenes(n, lab2.FactorizationWithThreadPool()))
+	fmt.Println("Время работы данного алгоритма:", time.Since(_time))
+	fmt.Println(time.Since(_time))
+	_time = time.Now()
+
+	fmt.Println("\nПараллельный алгоритм №4: последовательный перебор простых чисел")
+	printSliceEdges(lab2.ModifiedSieveOfEratosthenes(n, lab2.FactorizationWithConcurrentEnumerating(threads)))
+	fmt.Println("Время работы данного алгоритма:", time.Since(_time))
+	fmt.Println(time.Since(_time))
+	_time = time.Now()
 }
 
 // lab1TestFlags запускает обработку N чисел в M горутинах.
