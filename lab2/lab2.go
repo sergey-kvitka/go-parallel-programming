@@ -198,37 +198,70 @@ func FactorizationWithBaseComposition(threads int) FactorizationStrategy {
 	}
 }
 
-func FactorizationWithThreadPool() FactorizationStrategy {
+func FactorizationWithThreadPool(threads int) FactorizationStrategy {
 	return func(base []int, from int, to int) []int {
+		taskPool := make(chan int)
+
+		// * Очередь задач
+		go func() {
+			for _, num := range base {
+				taskPool <- num
+			}
+			close(taskPool)
+		}()
+
+		// * Функция, которая будет выполняться в потоках
+		job := func(n int, resHandler func(nums []int)) {
+			factorized := make([]int, 0)
+			for i := from; i <= to; i++ {
+				if i%n != 0 {
+					factorized = append(factorized, i)
+				}
+			}
+			resHandler(factorized)
+		}
 
 		factorizationResult := map[int]int{}
 		resultLen := 0
 		resMtx := sync.Mutex{}
-
 		baseLen := len(base)
 
-		wg := sync.WaitGroup{}
-		wg.Add(baseLen)
-
-		for _, num := range base {
-			go func(n int, result *map[int]int, mtx *sync.Mutex) {
-				defer wg.Done()
-				for i := from; i <= to; i++ {
-					if i%n == 0 {
-						continue
-					}
-
-					mtx.Lock()
-					factorizationResult[i]++
-					if factorizationResult[i] == baseLen {
-						resultLen++
-					}
-					mtx.Unlock()
+		// * Обработчик результатов из работающих потоков
+		handleRes := func(nums []int) {
+			resMtx.Lock()
+			for _, num := range nums {
+				factorizationResult[num]++
+				if factorizationResult[num] == baseLen {
+					resultLen++
 				}
-			}(num, &factorizationResult, &resMtx)
+			}
+			resMtx.Unlock()
+		}
+
+		wg := sync.WaitGroup{}
+		wg.Add(threads)
+
+		for t := 0; t < threads; t++ {
+			// * запуск определённого количества потоков
+			go func() {
+				defer wg.Done()
+
+				for {
+					// * в данном потоке запускаем job каждый раз,
+					// * когда канал может предоставить значение из очереди задач
+					n, ok := <-taskPool
+					if !ok {
+						return
+					}
+
+					// * запуск job
+					job(n, handleRes)
+				}
+			}()
 		}
 		wg.Wait()
 
+		// * доп. обработка результата с последующих возвращением итогового значения
 		result := make([]int, resultLen)
 		i := 0
 		for key, value := range factorizationResult {

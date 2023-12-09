@@ -61,7 +61,7 @@ func lab2Test() {
 	_time = time.Now()
 
 	fmt.Println("\nПараллельный алгоритм №3: применение пула потоков")
-	printSliceEdges(lab2.ModifiedSieveOfEratosthenes(n, lab2.FactorizationWithThreadPool()))
+	printSliceEdges(lab2.ModifiedSieveOfEratosthenes(n, lab2.FactorizationWithThreadPool(threads)))
 	fmt.Println("Время работы данного алгоритма:", time.Since(_time))
 	fmt.Println(time.Since(_time))
 	_time = time.Now()
