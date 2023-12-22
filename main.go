@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go-parallel-programming/lab1"
 	"go-parallel-programming/lab2"
+	"go-parallel-programming/lab3"
 	"math"
 	"runtime"
 	"time"
@@ -12,6 +13,19 @@ import (
 
 func main() {
 
+}
+
+func lab3Test() {
+	consumers := 3
+	messages := lab3.GenerateMessages(4, 6)
+
+	lab3.NonSync(consumers, messages, true)
+	fmt.Print("\n\n")
+	lab3.MutexSync(consumers, messages, true)
+	fmt.Print("\n\n")
+	lab3.ChannelSync(consumers, messages, true)
+	fmt.Print("\n\n")
+	lab3.CasSync(consumers, lab3.GenerateIntMessages(4, 6), true)
 }
 
 func lab2Test() {
