@@ -9,9 +9,7 @@ type KeyType interface {
 	int | float64 | string
 }
 
-type ValueType interface {
-	any
-}
+type ValueType interface{ any }
 
 type Instance[K KeyType, V ValueType] struct {
 	data map[K]V
