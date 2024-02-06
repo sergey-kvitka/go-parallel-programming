@@ -69,10 +69,12 @@ func (r *Instance[K, V]) SetWithTimeout(key K, value V, expiration time.Duration
 
 func (r *Instance[K, V]) startTimeoutCheck() {
 	go func() {
+
 		timeoutData := r.timeouts.data
+		timeoutMtx := r.timeouts.mtx
 
 		for now := range time.Tick(r.interval) {
-			r.timeouts.mtx.Lock()
+			timeoutMtx.Lock()
 
 			for k, v := range timeoutData {
 				if !now.Before(v) {
@@ -84,10 +86,10 @@ func (r *Instance[K, V]) startTimeoutCheck() {
 			}
 
 			if len(timeoutData) == 0 {
-				r.timeouts.mtx.Unlock()
+				timeoutMtx.Unlock()
 				return
 			}
-			r.timeouts.mtx.Unlock()
+			timeoutMtx.Unlock()
 		}
 	}()
 }
